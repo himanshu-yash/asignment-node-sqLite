@@ -28,7 +28,6 @@ app.use(
   })
 );
 
-
 // Swagger UI
 app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 
