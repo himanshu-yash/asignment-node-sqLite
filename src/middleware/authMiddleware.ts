@@ -1,5 +1,6 @@
 import { Request, Response, NextFunction } from "express";
 import jwt from "jsonwebtoken";
+import { UnauthorizedError, ForbiddenError } from "../errors/AppError";
 
 export interface JwtPayload {
   id: number;
@@ -21,38 +22,33 @@ declare global {
   }
 }
 
-export const authGuard = (req: Request, res: Response, next: NextFunction): void => {
+export const authGuard = (req: Request, _res: Response, next: NextFunction): void => {
   const authHeader = req.headers.authorization;
 
-  if (!authHeader || !authHeader.startsWith("Bearer ")) {
-    res.status(401).json({ success: false, message: "Access denied. No token provided." });
-    return;
+  if (!authHeader?.startsWith("Bearer ")) {
+    return next(new UnauthorizedError("Access denied. No token provided."));
   }
 
-  const token = authHeader.split(" ")[1];
-
   try {
-    const decoded = jwt.verify(token, process.env.JWT_SECRET as string) as JwtPayload;
-    req.user = decoded;
+    const token = authHeader.split(" ")[1];
+    req.user = jwt.verify(token, process.env.JWT_SECRET as string) as JwtPayload;
     next();
   } catch {
-    res.status(401).json({ success: false, message: "Invalid or expired token." });
+    next(new UnauthorizedError("Invalid or expired token."));
   }
 };
 
-export const sessionGuard = (req: Request, res: Response, next: NextFunction): void => {
+export const sessionGuard = (req: Request, _res: Response, next: NextFunction): void => {
   if (!req.session.user) {
-    res.status(401).json({ success: false, message: "Session expired. Please login again." });
-    return;
+    return next(new UnauthorizedError("Session expired. Please login again."));
   }
   next();
 };
 
 export const roleGuard = (...roles: string[]) => {
-  return (req: Request, res: Response, next: NextFunction): void => {
+  return (req: Request, _res: Response, next: NextFunction): void => {
     if (!req.user || !roles.includes(req.user.role)) {
-      res.status(403).json({ success: false, message: "Forbidden. Insufficient permissions." });
-      return;
+      return next(new ForbiddenError("Forbidden. Insufficient permissions."));
     }
     next();
   };

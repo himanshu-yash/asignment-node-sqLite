@@ -6,6 +6,12 @@ import swaggerUi from "swagger-ui-express";
 import { AppDataSource } from "./config/database";
 import { swaggerSpec } from "./config/swagger";
 import authRoutes from "./routes/authRoutes";
+import productRoutes from "./routes/productRoutes";
+import cartRoutes from "./routes/cartRoutes";
+import orderRoutes from "./routes/orderRoutes";
+import logger from "./config/logger";
+import { errorHandler } from "./middleware/errorHandler";
+import { NotFoundError } from "./errors/AppError";
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -33,23 +39,32 @@ app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 
 // Routes
 app.use("/api/auth", authRoutes);
+app.use("/api/products", productRoutes);
+app.use("/api/cart", cartRoutes);
+app.use("/api/orders", orderRoutes);
+// HTTP request logger
+app.use((req, _, next) => {
+  logger.debug(`${req.method} ${req.url}`);
+  next();
+});
 
 // Health check
-app.get("/health", (_, res) => res.json({ status: "ok" , time: new Date() }));
+app.get("/health", (_, res) => res.json({ status: "ok", time: new Date() }));
 
 // 404 handler
-app.use((_, res) => {
-  res.status(404).json({ success: false, message: "Route not found or Check request method" });
-});
+app.use((_req, _res, next) => next(new NotFoundError("Route not found or check request method")));
+
+// Global error handler
+app.use(errorHandler);
 
 // Initialize DB then start server
 AppDataSource.initialize()
   .then(() => {
-    console.log("Database connected");
-    app.listen(PORT, () => console.log(`Server running on http://localhost:${PORT}`));
+    logger.info("Database connected");
+    app.listen(PORT, () => logger.info(`Server running on http://localhost:${PORT}`));
   })
   .catch((err) => {
-    console.error("Database connection failed:", err);
+    logger.error(`Database connection failed: ${err.message}`);
     process.exit(1);
   });
 
