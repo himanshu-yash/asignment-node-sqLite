@@ -49,7 +49,7 @@ app.use((req, _, next) => {
 });
 
 // Health check
-app.get("/health", (_, res) => res.json({ status: "ok", time: new Date() }));
+app.get("/health", (_, res) => res.json({ status: "ok", time: new Date().toLocaleString("en-IN", { timeZone: "Asia/Kolkata" }) }));
 
 // 404 handler
 app.use((_req, _res, next) => next(new NotFoundError("Route not found or check request method")));
